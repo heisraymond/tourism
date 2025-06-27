@@ -1,13 +1,20 @@
 """This script extracts links of all tour operators 
 from safaribookings.com website
 """
-
+import os
+import sys
 import json
 import logging
 import requests
 from typing import Dict
 from bs4 import BeautifulSoup
 from multiprocessing import Pool
+
+# Add parent directory to Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Local import
+import mongodb
 
 
 # Configure logging
@@ -117,9 +124,11 @@ def fetchPageURLS(page: int) -> Dict[int, Dict[str, str]]:
     
     else:
         return {}
+    
 
 
 
+ 
 def getURLS() -> str:
 
     # Get the number of pages from the utility function
@@ -140,12 +149,39 @@ def getURLS() -> str:
     operatorURLS = json.dumps(operatorURLS, indent=2)
 
     return operatorURLS 
- 
+
+
+
+
+
+def saveToMongodb(data: Dict):
+    """
+    Save all operatorURLS into a single MongoDB document
+    Returns the MongoDB inserted document ID
+    """
+    # Clear any existing data
+    mongodb.collection.delete_many({})
+
+    # Insert one document with all operator data
+    result = mongodb.collection.insert_one({
+        "type": "List of operators",
+        "total": len(data),
+        "operators": data  
+    })
+
+    inserted_id = result.inserted_id
+    logging.info(f"Saved all operators into one document with _id: {inserted_id}")
+
+    return inserted_id 
+
+
+  
 
 
 def main():
     operatorURLS = getURLS()
-    print(operatorURLS)
+    id = saveToMongodb(operatorURLS)
+    logging.info("Done!")
 
 if __name__ == "__main__":
     main()
