@@ -25,8 +25,6 @@ logging.basicConfig(
 
 
 
-
-
 def getPageNumbers() -> int:
     """This fucntion extracts the number of pages that contain the 
     list of tour operators from safaribookings.com site
@@ -173,9 +171,6 @@ def saveToMongodb(data: Dict):
     logging.info(f"Saved all operators into one document with _id: {inserted_id}")
 
     return inserted_id 
-
-
-  
 
 
 def main():
