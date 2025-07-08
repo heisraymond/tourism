@@ -173,10 +173,10 @@ def saveToMongodb(data: Dict):
     return inserted_id 
 
 
-def main():
-    operatorURLS = getURLS()
-    id = saveToMongodb(operatorURLS)
-    logging.info("Done!")
+# def main():
+#     operatorURLS = getURLS()
+#     id = saveToMongodb(operatorURLS)
+#     logging.info("Done!")
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
