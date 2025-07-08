@@ -53,7 +53,9 @@ def getDetails():
     
     # Extract data for each url
     for i, (key, value) in enumerate(urls.items()):
-        print(f"{key}: {value}")
+
+        # Initialize the id variable
+        id = value["id"]
 
         # Initialize num
         num = None
@@ -68,10 +70,28 @@ def getDetails():
         }
 
         # Extract company profile for an indvidual company
+        profileURL = operatorURLS["companyprofile"]
+
+        try:
+            profileResponse = requests.get(profileURL, timeout=10)
+            profileResponse.raise_for_status()
+        except requests.RequestException as e:
+            logging.error(f"Error accessing {profileURL}: {e}")
+            return {}
         
+        if profileResponse.status_code == 200:
+            profileSoup = BeautifulSoup(profileResponse.text, "html.parser")
+            profileHTML = profileSoup.find("div", class_="col col-12 profile-desc")
+
+            # Print the clean text content
+            if profileHTML:
+                description = profileHTML.get_text(separator=" ", strip=True)
+                print(description)
+            else:
+                logging.info("Description not found.")
 
 
-    return urls
+    return description
     
 
 def main():
