@@ -25,6 +25,7 @@ logging.basicConfig(
 
 
 
+
 def getPageNumbers() -> int:
     """This fucntion extracts the number of pages that contain the 
     list of tour operators from safaribookings.com site
@@ -59,10 +60,6 @@ def getPageNumbers() -> int:
     else:
         logging.error(f"Unexpected status code: {response.status_code}")
         return None
-    
-
-
-
 
 
 
@@ -83,10 +80,12 @@ def fetchPageURLS(page: int) -> Dict[int, Dict[str, str]]:
             {
               1: {
                    "name": "Random operator 1",
+                   "id": "p1"
                    "link": "https://www.safaribookings.com/p1"
               },
               2: {
                    "name": "Random operator 2",
+                   "id": "p2"
                    "link": "https://www.safaribookings.com/p2"
               },
               ...
@@ -112,9 +111,11 @@ def fetchPageURLS(page: int) -> Dict[int, Dict[str, str]]:
         for i, a in enumerate(operator_links):
             name = a.get("title", f"Operator's {a} name not found")
             link = a.get("href", f"{a}. {name}'s link not found")
+            id =  link.strip('/').split('/')[-1]
 
             pageURLS[i] = {
                 "name": name,
+                "id": id,
                 "link": link
             }
 
@@ -122,11 +123,11 @@ def fetchPageURLS(page: int) -> Dict[int, Dict[str, str]]:
     
     else:
         return {}
-    
 
 
 
- 
+
+
 def getURLS() -> str:
 
     # Get the number of pages from the utility function

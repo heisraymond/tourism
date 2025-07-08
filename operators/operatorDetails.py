@@ -25,16 +25,8 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-operatorURLS = {
-    "overview": f"https://www.safaribookings.com/{id}",
-    "safariandtours": f"https://www.safaribookings.com/operator-tours/{id}",
-    "reviews": f"https://www.safaribookings.com/reviews/{id}",
-    "companyprofile": f"https://www.safaribookings.com/profile/{id}",
-    "destinations": f"https://www.safaribookings.com/profile/{id}",
-    "contact": f"https://www.safaribookings.com/operator-contact/{id}"
-}
 
-def getDetails(urls: Dict):
+def getDetails():
     """This function will recieve urls and start processing one url
     after another
 
@@ -51,4 +43,45 @@ def getDetails(urls: Dict):
     - Company profile
     - contacts
     """
-    pass
+    
+    # Extract the operator URLS
+    urls = getURLS()
+    
+    # Convert the urls from strings to python dictionary
+    if isinstance(urls, str):
+        urls = json.loads(urls)
+    
+    # Extract data for each url
+    for i, (key, value) in enumerate(urls.items()):
+        print(f"{key}: {value}")
+
+        # Initialize num
+        num = None
+
+        operatorURLS = {
+           "overview": f"https://www.safaribookings.com/{id}",
+           "safariandtours": f"https://www.safaribookings.com/operator-tours/{id}/page/{num}",
+           "reviews": f"https://www.safaribookings.com/reviews/{id}/page/{num}",
+           "companyprofile": f"https://www.safaribookings.com/profile/{id}",
+           "destinations": f"https://www.safaribookings.com/profile/{id}",
+           "contact": f"https://www.safaribookings.com/operator-contact/{id}" 
+        }
+
+        # Extract company profile for an indvidual company
+        
+
+
+    return urls
+    
+
+def main():
+    try:
+        logging.info("Starting the tour operator extraction process...")
+        details = getDetails()
+        logging.info("Extraction completed successfully.")
+        # You can add logic to store data in MongoDB or CSV here.
+    except Exception as e:
+        logging.error(f"An error occurred: {e}")
+
+if __name__ == "__main__":
+    main()
