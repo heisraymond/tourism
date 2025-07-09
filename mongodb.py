@@ -10,5 +10,5 @@ client = MongoClient(connection)
 db = client["tourism"]
 
 # Access a collection (it will also be created if it doesn't exist)
-collection = db["operators"]
+collection = db["operatorURLS"]
 
