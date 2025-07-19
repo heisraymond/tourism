@@ -12,3 +12,5 @@ db = client["tourism"]
 # Access a collection (it will also be created if it doesn't exist)
 collection = db["operatorURLS"]
 
+operatorCollection = db["operatorDetails"]
+
