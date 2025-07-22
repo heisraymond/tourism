@@ -3,6 +3,7 @@ tour operators and store them in both MongoDB and csv file
 """
 
 import os
+import re
 import sys
 import time
 import json
@@ -83,6 +84,7 @@ def getDetails():
 
     The details to be extracted are:
     - Review score
+    - Number of reviews
     - Offices branches
     - Size
     - Member of 
@@ -139,11 +141,55 @@ def getDetails():
             profileSoup = BeautifulSoup(profileResponse.text, "html.parser")
             profileHTML = profileSoup.find("div", class_="col col-12 profile-desc")
 
-            # Print the clean text content
+            # Extracting clean text content
             if profileHTML:
                 profile = profileHTML.get_text(separator=" ", strip=True)
             else:
                 logging.info("Description not found.")
+
+            # Extracting review score
+            scoreSpan = profileSoup.find('span', class_='review-score review-score--white')
+            
+            if scoreSpan and scoreSpan.find('em'):
+                 score = scoreSpan.find('em').text.strip()
+            else:
+                score = None 
+
+            # Extracting number of reviews
+            reveiwsHTML = profileSoup.find('a', class_='reviews-link')
+            if reveiwsHTML:
+                numberOfReviews = reveiwsHTML.text.strip()
+            else:
+                numberOfReviews = None
+
+            # Extracting data from the summary table
+            summaryTable = profileSoup.find('dl', class_='hide show-t')
+
+            # Extract all dd elements
+            tableValues = summaryTable.find_all('dd')
+
+            # Helper function to safely extract value at index
+            def getTableValues(index):
+                return tableValues[index].get_text(strip=True) if len(tableValues) > index else None
+            
+            # Safely extract each table value
+            officeLocation = getTableValues(0)
+            companySize = getTableValues(1)
+            memberOf = getTableValues(2)
+            tourTypes = getTableValues(3)
+            destinations = getTableValues(4)
+            priceRange = getTableValues(5)
+
+            if priceRange:
+                match = re.findall(r"\$\d+", priceRange)
+            else:
+                match = []
+
+            if len(match) == 2:
+                range = f"{match[0]} - {match[1]}"
+            else:
+                logging.warning("Price range format not as expected")
+                
         else:
             logging.warning("Company profile not found.")
         
@@ -151,6 +197,14 @@ def getDetails():
         operatorDetails = operatorCollection.insert_one({
             "name": value["name"],
             "URL": profileURL,
+            "Reviews score": score,
+            "Number of reviews": numberOfReviews,
+            "Office location": officeLocation,
+            "Company size": companySize,
+            "Member of": memberOf,
+            "Tour Types": tourTypes,
+            "Destinations": destinations,
+            "Price range": range,
             "Company profile": profile
         })
         companyProfiles.append(operatorDetails)
