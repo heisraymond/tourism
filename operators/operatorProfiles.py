@@ -16,7 +16,7 @@ from multiprocessing import Pool
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Local import
-from operatorData import getOperatorData
+from operators.operatorURLData import getOperatorData
 from mongodb import collection, operatorCollection
 
 
@@ -39,6 +39,7 @@ def getDetails():
         - Company size
         - Membership affiliations
         - Tour types offered
+        - Number of Tours
         - Destination coverage
         - Price range
         - Company profile/description
@@ -116,6 +117,14 @@ def getDetails():
             else:
                 numberOfReviews = None
 
+            # Extracting number of tours
+            toursSoup = profileSoup.find('ul', class_='filters__countries')
+            toursList = toursSoup.find_all('li')
+            listTwo = toursList[1]
+
+            numberOfTours = listTwo.find("span", class_="hide show-ti").get_text(strip=True) if listTwo else None
+
+
             # Extracting data from the summary table
             summaryTable = profileSoup.find('dl', class_='hide show-t')
 
@@ -157,6 +166,7 @@ def getDetails():
             "Company size": companySize,
             "Member of": memberOf,
             "Tour Types": tourTypes,
+            "Number of tours": numberOfTours,
             "Destinations": destinations,
             "Price range": range,
             "Company profile": profile
