@@ -5,11 +5,10 @@ tour operators and store them in both MongoDB and csv file
 import os
 import re
 import sys
-import time
 import json
+import typing
 import logging
 import requests
-from typing import Dict
 from bs4 import BeautifulSoup
 from multiprocessing import Pool
 
@@ -27,74 +26,29 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-# def getOperatorData():
-#     """This funtion will check if operatorData is available in the
-#     database and extract the required data, and if not it will run
-#     the urls.py script to extract the data and store them in the 
-#     database
-#     """
-
-#     # Check if data is available in the database first
-#     if collection.count_documents({}) == 0:
-#         logging.warning("No data found in 'operatorsURLS' collection")
-
-#         #Call the function for extracting the URLS and save them
-#         MAX_RETRIES = 5  
-#         retries = 0
-
-#         while True:
-#             try:
-#                 operatorURLS = getURLS()              # Extract URLs
-#                 id = saveToMongodb(operatorURLS)      # Attempt to save
-
-#                 if id:
-#                     logging.info("Successfully stored data in the database.")
-#                     break  # Exit loop if successful
-#                 else:
-#                     raise Exception("Data was not stored successfully.")
-
-#             except Exception as e:
-#                 retries += 1
-#                 logging.warning(f"Attempt {retries} failed: {e}")
-
-#                 if retries >= MAX_RETRIES:
-#                     logging.error("Maximum retries reached. Exiting.")
-#                     break
-
-#                 logging.info("🔁 Retrying in 5 seconds...")
-#                 time.sleep(5)  
-    
-#     else:
-#         logging.info("Data found in 'operatorsURLS' collection. Loading from DB...")
-
-#     operatorData = collection.find_one()
-
-#     if operatorData:
-#         logging.info("Operator data found..")
-#     else:
-#         logging.error("Operatord data not found..")
-
-#     return operatorData
-
-
 
 def getDetails():
-    """This function will recieve urls and start processing one url
-    after another
+    """
+    Extracts and stores detailed information about safari tour operators 
+    from SafariBookings.com using operator IDs retrieved from MongoDB.
 
-    The details to be extracted are:
-    - Review score
-    - Number of reviews
-    - Offices branches
-    - Size
-    - Member of 
-    - Tour types
-    - Destinations
-    - Price range
-    - Number of safari & tours
-    - Number of reviews
-    - Company profile
-    - contacts
+    This function processes each operator's URL to extract data including:
+        - Review score
+        - Number of reviews
+        - Office location
+        - Company size
+        - Membership affiliations
+        - Tour types offered
+        - Destination coverage
+        - Price range
+        - Company profile/description
+        - Contact page URL
+
+    The extracted data is stored in the `operatorCollection` MongoDB collection.
+
+    Returns:
+        list: A list of insertion result objects (`InsertOneResult`) from 
+        MongoDB for each operator whose data was successfully stored.
     """
     
     # Extract the MongoDB data
@@ -211,27 +165,14 @@ def getDetails():
 
     return companyProfiles
 
-    
 
 # def main():
-#     try:
-#         logging.info("Starting the tour operator extraction process...")
-#         details = getDetails()
-#         logging.info("Extraction completed successfully.")
-#         # You can add logic to store data in MongoDB or CSV here.
-#     except Exception as e:
-#         logging.error(f"An error occurred: {e}")
+#     """Main entry point for loading or extracting operator data."""
+#     logging.info("🚀 Starting operator data loading process...")
+
+#     # Call your function to get the operator data
+#     details = getDetails()
 
 # if __name__ == "__main__":
 #     main()
-
-def main():
-    """Main entry point for loading or extracting operator data."""
-    logging.info("🚀 Starting operator data loading process...")
-
-    # Call your function to get the operator data
-    details = getDetails()
-
-if __name__ == "__main__":
-    main()
 

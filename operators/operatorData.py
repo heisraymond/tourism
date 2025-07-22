@@ -3,7 +3,13 @@ import logging
 
 # Local import
 from urls import getURLS, saveToMongodb
-from mongodb import collection, operatorCollection
+from mongodb import collection
+
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG,  
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 def getOperatorData():
     """This funtion will check if operatorData is available in the
