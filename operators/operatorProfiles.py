@@ -27,7 +27,7 @@ logging.basicConfig(
 )
 
 
-def getDetails():
+def getDetails(operator):
     """
     Extracts and stores detailed information about safari tour operators 
     from SafariBookings.com using operator IDs retrieved from MongoDB.
@@ -47,118 +47,148 @@ def getDetails():
 
     The extracted data is stored in the `operatorCollection` MongoDB collection.
 
+    Args:
+        operator: A dictionary of operator data
+
     Returns:
         list: A list of insertion result objects (`InsertOneResult`) from 
         MongoDB for each operator whose data was successfully stored.
     """
-    
-    # Extract the MongoDB data
-    mongoData = getOperatorData()
-    
-    # Extract operators data from MongoDB data
-    operatorData = json.loads(mongoData["operators"])
 
-    # Clear any existing data
-    operatorCollection.delete_many({})
+    id = operator["id"]
+    name = operator["name"]
 
-    #Initialize empty list for company profiles
-    companyProfiles = []
-    
-    # Extract data for each url
-    for i, (key, value) in enumerate(operatorData.items()):
+    operatorURLS = {
+        "companyprofile": f"https://www.safaribookings.com/profile/{id}",
+        "contact": f"https://www.safaribookings.com/operator-contact/{id}" 
+    }
 
-        # Initialize the id variable
-        id = value["id"]
-        
-        # Initialize num
-        num = None
+    profileURL = operatorURLS["companyprofile"]
 
-        operatorURLS = {
-           "overview": f"https://www.safaribookings.com/{id}",
-           "safariandtours": f"https://www.safaribookings.com/operator-tours/{id}/page/{num}",
-           "reviews": f"https://www.safaribookings.com/reviews/{id}/page/{num}",
-           "companyprofile": f"https://www.safaribookings.com/profile/{id}",
-           "destinations": f"https://www.safaribookings.com/profile/{id}",
-           "contact": f"https://www.safaribookings.com/operator-contact/{id}" 
-        }
+    try:
+        profileResponse = requests.get(profileURL, timeout=10)
+        profileResponse.raise_for_status()
+    except requests.RequestException as e:
+        logging.error(f"[{name}] Error accessing profile page: {e}")
+        return None
 
-        # Extract company profile for an indvidual company
-        profileURL = operatorURLS["companyprofile"]
+    if profileResponse.status_code == 200:
+        profileSoup = BeautifulSoup(profileResponse.text, "html.parser")
+        profileHTML = profileSoup.find("div", class_="col col-12 profile-desc")
 
-        try:
-            profileResponse = requests.get(profileURL, timeout=10)
-            profileResponse.raise_for_status()
-        except requests.RequestException as e:
-            logging.error(f"Error accessing {profileURL}: {e}")
-            return {}
-        
-        if profileResponse.status_code == 200:
-            profileSoup = BeautifulSoup(profileResponse.text, "html.parser")
-            profileHTML = profileSoup.find("div", class_="col col-12 profile-desc")
+        # Extracting clean text content
+        if profileHTML:
+            profile = profileHTML.get_text(separator=" ", strip=True)
+        else:
+            logging.info("Description not found.")
+            return None
 
-            # Extracting clean text content
-            if profileHTML:
-                profile = profileHTML.get_text(separator=" ", strip=True)
-            else:
-                logging.info("Description not found.")
-
-            # Extracting review score
-            scoreSpan = profileSoup.find('span', class_='review-score review-score--white')
+        # Extracting review score
+        scoreSpan = profileSoup.find('span', class_='review-score review-score--white')
             
-            if scoreSpan and scoreSpan.find('em'):
-                 score = scoreSpan.find('em').text.strip()
+        if scoreSpan and scoreSpan.find('em'):
+            score = scoreSpan.find('em').text.strip()
+        else:
+            score = None 
+
+        # Extracting number of reviews
+        reveiwsHTML = profileSoup.find('a', class_='reviews-link')
+        if reveiwsHTML:
+            numberOfReviews = reveiwsHTML.text.strip()
+        else:
+            numberOfReviews = None
+
+        # Extracting number of tours
+        toursSoup = profileSoup.find('ul', class_='filters__countries')
+        toursList = toursSoup.find_all('li')
+        listTwo = toursList[1]
+
+        numberOfTours = None
+        if listTwo:
+            span = listTwo.find("span", class_="hide show-ti")
+            if span:
+                numberOfTours = span.get_text(strip=True)
             else:
-                score = None 
+                logging.info("numberOfTours span not found.")
+        else:
+            logging.info("listTwo not found.")
 
-            # Extracting number of reviews
-            reveiwsHTML = profileSoup.find('a', class_='reviews-link')
-            if reveiwsHTML:
-                numberOfReviews = reveiwsHTML.text.strip()
-            else:
-                numberOfReviews = None
+        # Extracting data from the summary table
+        summaryTable = profileSoup.find('dl', class_='hide show-t')
 
-            # Extracting number of tours
-            toursSoup = profileSoup.find('ul', class_='filters__countries')
-            toursList = toursSoup.find_all('li')
-            listTwo = toursList[1]
+        # Extract all dd elements
+        tableValues = summaryTable.find_all('dd')
 
-            numberOfTours = listTwo.find("span", class_="hide show-ti").get_text(strip=True) if listTwo else None
+        # Extract all dt elements
+        tableLabels = summaryTable.find_all('dt')
 
+        def getIndexLabel(dt_elements, word):
+            """
+            Returns the index of the first <dt> element containing the given word (case-insensitive).
+            If not found, returns -1.
+            """
+            word = word.lower()
+            return next(
+                (i for i, dt in enumerate(dt_elements) if word in dt.get_text(strip=True).lower()),
+                -1
+            )
 
-            # Extracting data from the summary table
-            summaryTable = profileSoup.find('dl', class_='hide show-t')
+        def getTableValue(index):
+            """
+            Safely extracts the text value from the dd element at the given index.
+            Returns None if index is out of range or value is missing.
+            """
+            if 0 <= index < len(tableValues):
+                value = tableValues[index]
+                if value:
+                    return value.get_text(strip=True)
+            # Optionally log a warning
+            logging.warning(f"Invalid index: {index}. tableValues length: {len(tableValues)}")
+            return None
 
-            # Extract all dd elements
-            tableValues = summaryTable.find_all('dd')
+        
+        # Safely extract each table value
+        officeLocationIndex = getIndexLabel(
+            tableLabels, word="Located In:"
+        )
+        officeLocation = getTableValue(officeLocationIndex)
+        companySizeIndex = getIndexLabel(
+            tableLabels, word="Size:"
+        )
+        companySize = getTableValue(companySizeIndex)
+        memberOfIndex = getIndexLabel(
+            tableLabels, word="Member Of:"
+        )
+        memberOf = getTableValue(memberOfIndex)
+        tourTypesIndex = getIndexLabel(
+            tableLabels, word="Tour Types:"
+        )
+        tourTypes = getTableValue(tourTypesIndex)
+        destinationsIndex = getIndexLabel(
+            tableLabels, word="Destinations:"
+        )
+        destinations = getTableValue(destinationsIndex)
+        priceRangeIndex = getIndexLabel(
+            tableLabels, word="Price Range:"
+        )
+        priceRange = getTableValue(priceRangeIndex)
 
-            # Helper function to safely extract value at index
-            def getTableValues(index):
-                return tableValues[index].get_text(strip=True) if len(tableValues) > index else None
-            
-            # Safely extract each table value
-            officeLocation = getTableValues(0)
-            companySize = getTableValues(1)
-            memberOf = getTableValues(2)
-            tourTypes = getTableValues(3)
-            destinations = getTableValues(4)
-            priceRange = getTableValues(5)
-
-            if priceRange:
-                match = re.findall(r"\$\d+", priceRange)
-            else:
-                match = []
-
+        range = None  # Default fallback
+        if priceRange:
+            match = re.findall(r"\$\d{1,3}(?:,\d{3})*(?:\.\d{2})?", priceRange)
             if len(match) == 2:
                 range = f"{match[0]} - {match[1]}"
             else:
                 logging.warning("Price range format not as expected")
-                
         else:
-            logging.warning("Company profile not found.")
+            logging.warning("Price range is missing.")
+
+    else:
+        logging.warning("Company profile not found.")
         
 
-        operatorDetails = operatorCollection.insert_one({
-            "name": value["name"],
+    return {
+            "name": operator["name"],
             "URL": profileURL,
             "Reviews score": score,
             "Number of reviews": numberOfReviews,
@@ -170,19 +200,52 @@ def getDetails():
             "Destinations": destinations,
             "Price range": range,
             "Company profile": profile
-        })
-        companyProfiles.append(operatorDetails)
-
-    return companyProfiles
+        }
+        
 
 
-# def main():
-#     """Main entry point for loading or extracting operator data."""
-#     logging.info("🚀 Starting operator data loading process...")
 
-#     # Call your function to get the operator data
-#     details = getDetails()
+def getOperatorProfileDetails():
+    """
+    Processes all operators using multiprocessing and inserts into MongoDB.
+    """
+    mongoData = getOperatorData()
+    operatorData = json.loads(mongoData["operators"])
+    operators = [{"id": v["id"], "name": v["name"]} for v in operatorData.values()]
 
-# if __name__ == "__main__":
-#     main()
+    # Clear previous options
+    operatorCollection.delete_many({})  
+
+    with Pool(processes=10) as pool:  
+        results = pool.map(getDetails, operators)
+
+    # Filter out None results (failed ones)
+    valid_results = [res for res in results if res]
+
+    # Insert into MongoDB
+    if valid_results:
+        insert_result = operatorCollection.insert_many(valid_results)
+        return insert_result.inserted_ids
+    else:
+        return []
+
+
+def main():
+    logging.info("Starting...")
+    inserted = getOperatorProfileDetails()
+    logging.info(f"Done. Inserted: {len(inserted)}")
+
+if __name__ == "__main__":
+    main()
+
+
+
+# operatorURLS = {
+#            "overview": f"https://www.safaribookings.com/{id}",
+#            "safariandtours": f"https://www.safaribookings.com/operator-tours/{id}/page/{num}",
+#            "reviews": f"https://www.safaribookings.com/reviews/{id}/page/{num}",
+#            "companyprofile": f"https://www.safaribookings.com/profile/{id}",
+#            "destinations": f"https://www.safaribookings.com/profile/{id}",
+#            "contact": f"https://www.safaribookings.com/operator-contact/{id}" 
+#     }
 
