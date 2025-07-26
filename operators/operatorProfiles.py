@@ -149,7 +149,7 @@ def getDetails(operator):
         
         # Safely extract each table value
         officeLocationIndex = getIndexLabel(
-            tableLabels, word="Located In:"
+            tableLabels, word="Office In:"
         )
         officeLocation = getTableValue(officeLocationIndex)
         companySizeIndex = getIndexLabel(
@@ -185,7 +185,52 @@ def getDetails(operator):
 
     else:
         logging.warning("Company profile not found.")
+
+    
+    """**************************************************
+                EXTRACTING COMPANY CONTACTS
+       **************************************************
+    """
+    operatorCONTACT = operatorURLS["contact"]
+
+    try:
+        conactsResponse = requests.get(operatorCONTACT, timeout=10)
+        conactsResponse.raise_for_status()
+    except requests.RequestException as e:
+        logging.error(f"[{name}] Error accessing profile page: {e}")
+        return None
+    
+    if conactsResponse.status_code == 200:
+        contactsSoup = BeautifulSoup(conactsResponse.text, "html.parser")
+        contactsHTML = contactsSoup.find("div", class_="operator__content")
+
+        contactsContent = contactsHTML.find_all(
+            "div", class_="col col-12 detail__content__block--addressblock"
+            )
         
+        # Initialize empty list of contacts
+        contacts = []
+
+        for block in enumerate(contactsContent):
+            text = block.get_text(separator="\n", strip=True)
+            contactOffice = text
+            contacts.append(contactOffice)
+
+        # Extract website
+        websiteHTML = contactsHTML.find(
+            "div", class_="col col-12 detail__content__block--addressblock"
+            )
+        website = websiteHTML.find("a").get_text(strip=True)
+
+        # Extract phone number
+        phoneNumber = contactsHTML.get_text(separator="\n", strip=True)
+        # Extract the word that starts with '+'
+        match = re.search(r"\+\d+", phoneNumber)
+        if match:
+            phone_number = match.group()
+        else:
+            logging.warning("No phone number found.")
+
 
     return {
             "name": operator["name"],
@@ -199,7 +244,10 @@ def getDetails(operator):
             "Number of tours": numberOfTours,
             "Destinations": destinations,
             "Price range": range,
-            "Company profile": profile
+            "Company profile": profile,
+            "Contacts": contacts,
+            "Website": website,
+            "Phone number": phone_number
         }
         
 
