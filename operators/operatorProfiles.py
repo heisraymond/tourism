@@ -6,6 +6,7 @@ import os
 import re
 import sys
 import json
+import time
 import typing
 import logging
 import requests
@@ -191,6 +192,8 @@ def getDetails(operator):
                 EXTRACTING COMPANY CONTACTS
        **************************************************
     """
+    time.sleep(3)
+
     operatorCONTACT = operatorURLS["contact"]
 
     try:
@@ -211,25 +214,32 @@ def getDetails(operator):
         # Initialize empty list of contacts
         contacts = []
 
-        for block in enumerate(contactsContent):
+        for block in contactsContent:
             text = block.get_text(separator="\n", strip=True)
-            contactOffice = text
-            contacts.append(contactOffice)
+            contacts.append(text)
+
 
         # Extract website
         websiteHTML = contactsHTML.find(
             "div", class_="col col-12 detail__content__block--addressblock"
             )
-        website = websiteHTML.find("a").get_text(strip=True)
+        a_tag = websiteHTML.find("a")
+        if a_tag:
+            website = a_tag.get_text(strip=True)
+        else:
+            website = None  
+
 
         # Extract phone number
-        phoneNumber = contactsHTML.get_text(separator="\n", strip=True)
-        # Extract the word that starts with '+'
-        match = re.search(r"\+\d+", phoneNumber)
+        phone_text = contactsHTML.get_text(separator="\n", strip=True)
+
+        # Pattern to match something like: "Tel: +254 0100 512936"
+        match = re.search(r"Tel:\s*\+?([\d\s]+)", phone_text)
+
         if match:
-            phone_number = match.group()
+            phone_number = match.group(1).strip()  # This gives "254 0100 512936"
         else:
-            logging.warning("No phone number found.")
+            phone_number = None  # If not found
 
 
     return {
@@ -245,7 +255,6 @@ def getDetails(operator):
             "Destinations": destinations,
             "Price range": range,
             "Company profile": profile,
-            "Contacts": contacts,
             "Website": website,
             "Phone number": phone_number
         }
@@ -264,7 +273,7 @@ def getOperatorProfileDetails():
     # Clear previous options
     operatorCollection.delete_many({})  
 
-    with Pool(processes=10) as pool:  
+    with Pool(processes=7) as pool:  
         results = pool.map(getDetails, operators)
 
     # Filter out None results (failed ones)
