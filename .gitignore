@@ -1,5 +1,7 @@
 # Venv
 /venv
+/adiel_qr.png 
+/kazia_qr.png
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
